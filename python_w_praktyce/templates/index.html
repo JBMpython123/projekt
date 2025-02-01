@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dziennik kalorii</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f7f7f7;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+        }
+
+        h1 {
+            color: white;
+        }
+
+        main {
+            margin: 20px auto;
+            max-width: 800px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        h2, h3 {
+            color: #4CAF50;
+        }
+
+        form {
+            margin-bottom: 20px;
+            padding: 10px 15px;
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        form input, form select, form button {
+            margin: 5px 0;
+            padding: 8px;
+            width: 100%;
+            max-width: 400px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        form button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        form button:hover {
+            background-color: #45a049;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        ul li {
+            padding: 8px 0;
+            border-bottom: 1px solid #ddd;
+        }
+
+        ul li:last-child {
+            border-bottom: none;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .buttons form {
+            display: inline-block;
+        }
+
+        .summary {
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #e7f6e7;
+            border: 1px solid #d0e5d0;
+            border-radius: 5px;
+        }
+
+        .summary strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .total-summary {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #4CAF50;
+            border: 2px solid #fff;
+            border-radius: 8px;
+            color: white;
+            font-size: 18px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+
+        .total-summary strong {
+            font-size: 22px;
+            color: white;
+        }
+
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Dziennik kalorii</h1>
+    </header>
+    <main>
+        <h2>Dodaj produkt</h2>
+        <form action="/add_product" method="POST">
+            <input type="text" name="product_name" placeholder="Nazwa produktu" required>
+            <input type="number" name="calories" placeholder="Kalorie (na 100 gram)" required>
+            <input type="number" name="protein" step="0.1" placeholder="Białko (na 100 gram)" required>
+            <input type="number" name="fat" step="0.1" placeholder="Tłuszcz (na 100 gram)" required>
+            <input type="number" name="carbs" step="0.1" placeholder="Węglowodany (na 100 gram)" required>
+            <button type="submit">Dodaj Produkt</button>
+        </form>
+
+        <h2>Wybierz posiłek i dodaj produkt</h2>
+        <form action="/add_to_meal" method="POST">
+            <select name="meal_id" required>
+                {% for meal in meals %}
+                <option value="{{ meal.id }}">{{ meal.name }}</option>
+                {% endfor %}
+            </select>
+            <select name="product_id" required>
+                {% for product in products %}
+                <option value="{{ product.id }}">{{ product.name }}</option>
+                {% endfor %}
+            </select>
+            <input type="number" name="gramy" placeholder="gramy" required>
+            <button type="submit">Dodaj do posiłku</button>
+        </form>
+
+        <h2>Podsumowanie dnia</h2>
+        {% for meal in meals %}
+        <h3>{{ meal.name }}</h3>
+        <ul>
+            {% for connection in meal.meal_products %}
+            {% set product = connection.product %}
+            <li>
+                {{ product.name }} - {{ connection.grams }}g,
+                {{ (product.calories * connection.grams / 100) | round(2) }} kcal,
+                {{ (product.protein * connection.grams / 100) | round(2) }}g białka,
+                {{ (product.fat * connection.grams / 100) | round(2) }}g tłuszczu,
+                {{ (product.carbs * connection.grams / 100) | round(2) }}g węglowodanów
+                <div class="buttons">
+                    <form action="/edit_product_in_meal" method="POST">
+                        <input type="hidden" name="meal_id" value="{{ meal.id }}">
+                        <input type="hidden" name="product_id" value="{{ product.id }}">
+                        <input type="number" name="new_grams" placeholder="Nowa gramatura" required>
+                        <button type="submit">Zatwierdź</button>
+                    </form>
+                    <form action="/remove_product_from_meal" method="POST">
+                        <input type="hidden" name="meal_id" value="{{ meal.id }}">
+                        <input type="hidden" name="product_id" value="{{ product.id }}">
+                        <button type="submit">Usuń</button>
+                    </form>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        <div class="summary">
+            <strong>Podsumowanie posiłku:</strong>
+            Kalorie: {{ meal.total_calories | round(2) }} kcal<br>
+            Białko: {{ meal.total_protein | round(2) }}g<br>
+            Tłuszcze: {{ meal.total_fat | round(2) }}g<br>
+            Węglowodany: {{ meal.total_carbs | round(2) }}g<br>
+        </div>
+        {% endfor %}
+
+        <div class="total-summary">
+            <strong>Całkowite podsumowanie dnia:</strong><br>
+            Kalorie: {{ total_calories | round(2) }} kcal<br>
+            Białko: {{ total_protein | round(2) }}g<br>
+            Tłuszcze: {{ total_fat | round(2) }}g<br>
+            Węglowodany: {{ total_carbs | round(2) }}g<br>
+        </div>
+    </main>
+</body>
+</html>
